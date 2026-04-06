@@ -1,0 +1,10 @@
+name: PolarAddon
+version: 1.0-SNAPSHOT
+main: ro.puk3p.polaraddon.PolarAddonPlugin
+api-version: "1.8"
+author: Puk3p
+description: Polar Anticheat addon plugin
+
+# PolarLoader must be loaded before this plugin so the API is available
+depend:
+  - PolarLoader

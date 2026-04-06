@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [ "**" ]
+    tags-ignore: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build:
+    name: Lint, Test & Analyze
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # Step 1 — Code formatting
+      - name: "Step 1: Spotless (code formatting)"
+        run: mvn spotless:check --batch-mode --no-transfer-progress
+
+      # Step 2 — Compile
+      - name: "Step 2: Compile"
+        run: mvn clean compile --batch-mode --no-transfer-progress
+
+      # Step 3 — Static analysis
+      - name: "Step 3: SpotBugs (static analysis)"
+        run: mvn spotbugs:check --batch-mode --no-transfer-progress
+
+      # Step 4 — Package JAR
+      - name: "Step 4: Package"
+        run: mvn package -DskipTests --batch-mode --no-transfer-progress
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: polar-addon-${{ github.sha }}
+          path: target/polar-addon-*.jar
+          if-no-files-found: error

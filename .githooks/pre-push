@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+# Pre-push hook: full verify (formatting + compile + SpotBugs) before every push.
+
+echo "[pre-push] Step 1: Spotless (code formatting)..."
+mvn spotless:check -q
+if [ $? -ne 0 ]; then
+  echo "[pre-push] Formatting check failed. Run: mvn spotless:apply"
+  exit 1
+fi
+
+echo "[pre-push] Step 2: Compile..."
+mvn clean compile -q
+if [ $? -ne 0 ]; then
+  echo "[pre-push] Compilation failed — push aborted."
+  exit 1
+fi
+
+echo "[pre-push] Step 3: SpotBugs (static analysis)..."
+mvn spotbugs:check -q
+if [ $? -ne 0 ]; then
+  echo "[pre-push] SpotBugs found issues — push aborted."
+  exit 1
+fi
+
+echo "[pre-push] OK."

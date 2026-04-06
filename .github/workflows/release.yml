@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Verify & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Set Maven version from tag
+        run: mvn versions:set -DnewVersion=${{ steps.version.outputs.VERSION }} --batch-mode
+
+      # Step 1 — Code formatting
+      - name: "Step 1: Spotless (code formatting)"
+        run: mvn spotless:check --batch-mode --no-transfer-progress
+
+      # Step 2 — Compile
+      - name: "Step 2: Compile"
+        run: mvn clean compile --batch-mode --no-transfer-progress
+
+      # Step 3 — Static analysis
+      - name: "Step 3: SpotBugs (static analysis)"
+        run: mvn spotbugs:check --batch-mode --no-transfer-progress
+
+      # Step 4 — Package JAR
+      - name: "Step 4: Package"
+        run: mvn package -DskipTests --batch-mode --no-transfer-progress
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/polar-addon-*.jar
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: "Step 5: Post Discord Embed"
+        run: |
+          JAR_NAME=$(basename $(ls target/polar-addon-*.jar | head -n 1))
+          WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1489410922706505871"
+
+          curl -X POST -H "Content-Type: application/json" -d '{
+            "username": "Puk3p CI/CD",
+            "content": "<@&'"${{ secrets.OPERATOR_ROLE_ID }}"'> New build available! ⬇️",
+            "embeds": [
+              {
+                "title": "✨ PolarAddon — Fresh Build Available",
+                "description": "**Deployment completed successfully**\nA new plugin version has just been generated and uploaded automatically.",
+                "color": 10181046,
+                "fields": [
+                  {"name": "🔖 Version", "value": "`'"${{ steps.version.outputs.VERSION }}"'`", "inline": true},
+                  {"name": "📂 File", "value": "`'"$JAR_NAME"'`", "inline": true},
+                  {"name": "⚙️ Pipeline", "value": "`GitHub Actions`", "inline": true}
+                ],
+                "thumbnail": {"url": "https://cdn-icons-png.flaticon.com/512/226/226777.png"},
+                "footer": {"text": "Puk3p Automated Build System"},
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+              }
+            ]
+          }' "$WEBHOOK"
+
+      - name: "Step 6: Upload JAR to Discord"
+        run: |
+          JAR_FILE=$(ls target/polar-addon-*.jar | head -n 1)
+          WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1489410922706505871"
+
+          curl -X POST \
+               -F "file=@$JAR_FILE" \
+               -F 'payload_json={"username":"Puk3p CI/CD"}' \
+               "$WEBHOOK"
