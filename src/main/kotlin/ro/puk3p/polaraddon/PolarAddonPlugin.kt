@@ -1,6 +1,7 @@
 package ro.puk3p.polaraddon
 
 import org.bukkit.plugin.java.JavaPlugin
+import ro.puk3p.polaraddon.core.bootstrap.PluginBootstrap
 import ro.puk3p.polaraddon.polar.PolarApiHook
 
 class PolarAddonPlugin : JavaPlugin() {
@@ -15,6 +16,7 @@ class PolarAddonPlugin : JavaPlugin() {
     }
 
     override fun onEnable() {
+        PluginBootstrap(this).start()
         logger.info("PolarAddon enabled.")
     }
 

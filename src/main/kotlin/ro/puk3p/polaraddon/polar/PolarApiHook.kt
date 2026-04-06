@@ -7,7 +7,6 @@ import top.polar.api.user.event.DetectionAlertEvent
 import top.polar.api.user.event.MitigationEvent
 import top.polar.api.user.event.PunishmentEvent
 
-
 object PolarApiHook {
     fun init() {
         val plugin = PolarAddonPlugin.instance
@@ -27,7 +26,6 @@ object PolarApiHook {
         val plugin = PolarAddonPlugin.instance
 
         repo.registerListener(DetectionAlertEvent::class.java) { event ->
-            // TODO: handle detection alerts
             plugin.logger.info(
                 "[Polar] Detection alert: player=${event.user().username()}, " +
                     "check=${event.check().name()}, vl=${event.check().violationLevel()}",
@@ -35,7 +33,6 @@ object PolarApiHook {
         }
 
         repo.registerListener(MitigationEvent::class.java) { event ->
-            // TODO: handle mitigations (cancelled packets / rubber-banding)
             plugin.logger.info(
                 "[Polar] Mitigation: player=${event.user().username()}, " +
                     "check=${event.check().name()}",
@@ -43,7 +40,6 @@ object PolarApiHook {
         }
 
         repo.registerListener(PunishmentEvent::class.java) { event ->
-            // TODO: handle punishments
             plugin.logger.info(
                 "[Polar] Punishment: player=${event.user().username()}",
             )

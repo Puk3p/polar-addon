@@ -14,7 +14,7 @@
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
         <kotlin.version>2.3.10</kotlin.version>
-        <spotbugs.version>4.8.3</spotbugs.version>
+        <spotbugs.version>4.9.8.3</spotbugs.version>
     </properties>
 
     <repositories>
@@ -113,7 +113,7 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.3.1</version>
+                <version>${spotbugs.version}</version>
                 <configuration>
                     <effort>Max</effort>
                     <threshold>Medium</threshold>

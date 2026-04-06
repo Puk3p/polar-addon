@@ -8,3 +8,22 @@ description: Polar Anticheat addon plugin
 # PolarLoader must be loaded before this plugin so the API is available
 depend:
   - PolarLoader
+
+commands:
+  polar:
+    description: PolarAddon staff commands (rotate / knockback)
+    usage: /polar <rotate|knockback> <player> [args...]
+    permission: polaraddon.use
+
+permissions:
+  polaraddon.use:
+    description: Access to /polar command root (required alongside sub-permissions)
+    default: op
+
+  polaraddon.rotate:
+    description: Force a player's head rotation (/polar rotate)
+    default: op
+
+  polaraddon.knockback:
+    description: Apply a knockback impulse to a player (/polar knockback)
+    default: op
