@@ -12,7 +12,7 @@ depend:
 commands:
   polar:
     description: PolarAddon staff commands (rotate / knockback / test / summon)
-    usage: /polar <rotate|knockback|test|summon> <player> [blaze|skeleton]
+    usage: /polar <rotate|knockback|test|summon> <player> [mob]
     permission: polaraddon.use
 
 permissions:

@@ -7,8 +7,8 @@ import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
 import org.bukkit.entity.EntityType
-import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
+import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.util.Vector
 import ro.puk3p.polaraddon.application.result.UseCaseResult
 import ro.puk3p.polaraddon.application.usecase.KnockbackPlayerUseCase
@@ -18,6 +18,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class PolarCommand(
+    private val plugin: JavaPlugin,
     private val rotateUseCase: RotatePlayerUseCase,
     private val knockbackUseCase: KnockbackPlayerUseCase,
 ) : CommandExecutor, TabCompleter {
@@ -128,20 +129,18 @@ class PolarCommand(
             return
         }
         if (args.size != 3) {
-            sender.sendMessage("$PREFIX§cUsage: /polar summon <player> <blaze|skeleton>")
+            sender.sendMessage("$PREFIX§cUsage: /polar summon <player> <mob>")
             return
         }
 
         val playerName = args[1]
+        val mobName = args[2].lowercase()
         val entityType =
-            when (args[2].lowercase()) {
-                ENTITY_BLAZE -> EntityType.BLAZE
-                ENTITY_SKELETON -> EntityType.SKELETON
-                else -> {
-                    sender.sendMessage("$PREFIX§cMob must be §eblaze §cor §eskeleton§c.")
+            SUMMON_ENTITY_TYPES[mobName]
+                ?: run {
+                    sender.sendMessage("$PREFIX§cMob must be one of: §e${SUMMON_ENTITY_TYPES.keys.joinToString(", ")}§c.")
                     return
                 }
-            }
 
         val player =
             Bukkit.getPlayerExact(playerName)
@@ -157,11 +156,18 @@ class PolarCommand(
                     return
                 }
 
-        val entity = player.world.spawnEntity(spawnLocation, entityType) as LivingEntity
-        entity.customName = "Polar KillAura Test"
-        entity.isCustomNameVisible = true
+        val entity = player.world.spawnEntity(spawnLocation, entityType)
+        Bukkit.getScheduler().runTaskLater(
+            plugin,
+            Runnable {
+                if (!entity.isDead) {
+                    entity.remove()
+                }
+            },
+            SUMMON_DESPAWN_TICKS,
+        )
 
-        sender.sendMessage("$PREFIX§aSpawned §e${args[2].lowercase()} §anear §e$playerName §afor KillAura testing.")
+        sender.sendMessage("$PREFIX§aSpawned §e$mobName §anear §e$playerName §afor 3 seconds.")
     }
 
     private fun findSideOrBehindLocation(player: Player): Location? {
@@ -201,7 +207,7 @@ class PolarCommand(
         sender.sendMessage("$PREFIX§7/polar rotate <player>")
         sender.sendMessage("$PREFIX§7/polar knockback <player>")
         sender.sendMessage("$PREFIX§7/polar test <player>")
-        sender.sendMessage("$PREFIX§7/polar summon <player> <blaze|skeleton>")
+        sender.sendMessage("$PREFIX§7/polar summon <player> <mob>")
     }
 
     override fun onTabComplete(
@@ -232,7 +238,7 @@ class PolarCommand(
             }
             3 ->
                 if (args[0].equals(SUB_SUMMON, ignoreCase = true) && sender.hasPermission(PERM_SUMMON)) {
-                    listOf(ENTITY_BLAZE, ENTITY_SKELETON)
+                    SUMMON_ENTITY_TYPES.keys
                         .filter { it.startsWith(args[2].lowercase()) }
                 } else {
                     emptyList()
@@ -270,11 +276,26 @@ class PolarCommand(
         const val SUB_KB = "kb"
         const val SUB_TEST = "test"
         const val SUB_SUMMON = "summon"
-        const val ENTITY_BLAZE = "blaze"
-        const val ENTITY_SKELETON = "skeleton"
         const val FULL_ROTATION_DEGREES = 360f
         const val DEFAULT_PITCH = 0f
-        const val DEFAULT_STRENGTH = 0.8
+        const val DEFAULT_STRENGTH = 1.6
+        const val SUMMON_DESPAWN_TICKS = 60L
         val SUMMON_DISTANCES = doubleArrayOf(2.0, 3.0)
+        val SUMMON_ENTITY_TYPES =
+            linkedMapOf(
+                "blaze" to EntityType.BLAZE,
+                "skeleton" to EntityType.SKELETON,
+                "zombie" to EntityType.ZOMBIE,
+                "creeper" to EntityType.CREEPER,
+                "spider" to EntityType.SPIDER,
+                "cave_spider" to EntityType.CAVE_SPIDER,
+                "witch" to EntityType.WITCH,
+                "enderman" to EntityType.ENDERMAN,
+                "pig_zombie" to EntityType.PIG_ZOMBIE,
+                "zombie_pigman" to EntityType.PIG_ZOMBIE,
+                "slime" to EntityType.SLIME,
+                "magma_cube" to EntityType.MAGMA_CUBE,
+                "iron_golem" to EntityType.IRON_GOLEM,
+            )
     }
 }

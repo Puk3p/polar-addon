@@ -17,7 +17,7 @@ class PluginBootstrap(private val plugin: JavaPlugin) {
         val rotateUseCase = RotatePlayerUseCase(playerLookup, playerRotator)
         val knockbackUseCase = KnockbackPlayerUseCase(playerLookup, playerKnocker)
 
-        val polarCommand = PolarCommand(rotateUseCase, knockbackUseCase)
+        val polarCommand = PolarCommand(plugin, rotateUseCase, knockbackUseCase)
         plugin.getCommand("polar")?.let {
             it.setExecutor(polarCommand)
             it.tabCompleter = polarCommand
