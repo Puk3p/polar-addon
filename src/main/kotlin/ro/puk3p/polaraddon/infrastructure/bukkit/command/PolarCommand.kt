@@ -41,21 +41,20 @@ class PolarCommand(
             sender.sendMessage("$PREFIX§cYou don't have permission to use this command.")
             return
         }
-        if (args.size < 2) {
-            sender.sendMessage("$PREFIX§cUsage: /polar rotate <player> [yaw] [pitch]")
+        if (args.size != 2) {
+            sender.sendMessage("$PREFIX§cUsage: /polar rotate <player>")
             return
         }
 
         val playerName = args[1]
-        val yaw = args.getOrNull(2)?.toFloatOrNull() ?: (kotlin.random.Random.nextFloat() * 360f)
-        val pitch = args.getOrNull(3)?.toFloatOrNull() ?: 0f
+        val yaw = kotlin.random.Random.nextFloat() * FULL_ROTATION_DEGREES
+        val pitch = DEFAULT_PITCH
         val target = RotationTarget(yaw, pitch)
 
         when (rotateUseCase.execute(playerName, target)) {
             UseCaseResult.Ok ->
                 sender.sendMessage(
-                    "$PREFIX§aRotated §e$playerName §ato " +
-                        "yaw=§f${"%.1f".format(yaw)}§a pitch=§f${"%.1f".format(pitch)}§a.",
+                    "$PREFIX§aRandomly rotated §e$playerName§a.",
                 )
             UseCaseResult.PlayerNotFound ->
                 sender.sendMessage("$PREFIX§cPlayer §e$playerName §cis not online.")
@@ -70,18 +69,17 @@ class PolarCommand(
             sender.sendMessage("$PREFIX§cYou don't have permission to use this command.")
             return
         }
-        if (args.size < 2) {
-            sender.sendMessage("$PREFIX§cUsage: /polar knockback <player> [strength]")
+        if (args.size != 2) {
+            sender.sendMessage("$PREFIX§cUsage: /polar knockback <player>")
             return
         }
 
         val playerName = args[1]
-        val strength = args.getOrNull(2)?.toDoubleOrNull()?.coerceIn(MIN_STRENGTH, MAX_STRENGTH) ?: DEFAULT_STRENGTH
 
-        when (knockbackUseCase.execute(playerName, strength)) {
+        when (knockbackUseCase.execute(playerName, DEFAULT_STRENGTH)) {
             UseCaseResult.Ok ->
                 sender.sendMessage(
-                    "$PREFIX§aKnocked back §e$playerName §awith strength §f${"%.1f".format(strength)}§a.",
+                    "$PREFIX§aKnocked back §e$playerName§a.",
                 )
             UseCaseResult.PlayerNotFound ->
                 sender.sendMessage("$PREFIX§cPlayer §e$playerName §cis not online.")
@@ -89,8 +87,8 @@ class PolarCommand(
     }
 
     private fun sendUsage(sender: CommandSender) {
-        sender.sendMessage("$PREFIX§7/polar rotate <player> [yaw] [pitch]")
-        sender.sendMessage("$PREFIX§7/polar knockback <player> [strength]")
+        sender.sendMessage("$PREFIX§7/polar rotate <player>")
+        sender.sendMessage("$PREFIX§7/polar knockback <player>")
     }
 
     override fun onTabComplete(
@@ -128,8 +126,8 @@ class PolarCommand(
         const val SUB_ROTATE = "rotate"
         const val SUB_KNOCKBACK = "knockback"
         const val SUB_KB = "kb"
-        const val DEFAULT_STRENGTH = 1.0
-        const val MIN_STRENGTH = 0.1
-        const val MAX_STRENGTH = 5.0
+        const val FULL_ROTATION_DEGREES = 360f
+        const val DEFAULT_PITCH = 0f
+        const val DEFAULT_STRENGTH = 0.8
     }
 }

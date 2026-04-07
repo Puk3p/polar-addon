@@ -12,7 +12,7 @@ depend:
 commands:
   polar:
     description: PolarAddon staff commands (rotate / knockback)
-    usage: /polar <rotate|knockback> <player> [args...]
+    usage: /polar <rotate|knockback> <player>
     permission: polaraddon.use
 
 permissions:
