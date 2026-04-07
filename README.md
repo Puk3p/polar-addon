@@ -1,14 +1,23 @@
 # PolarAddon
 
-PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staff commands for forcing a player rotation and applying controlled knockback.
+PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staff-side tools for random rotation, moderate knockback, and KillAura bait checks.
 
-## Features
+## Commands
 
-- `/polar rotate <player>` rotates an online player to a random yaw.
-- `/polar knockback <player>` applies a moderate knockback from the player's current facing direction.
-- `/polar test <player>` applies a random rotation and moderate knockback together.
-- `/polar summon <player> <blaze|skeleton>` spawns a KillAura test mob to the player's left, right, or behind them.
-- Knockback checks the space in front of the player and cancels horizontal push when it would drive them into a solid block.
+| Command | Permission | What it does |
+| --- | --- | --- |
+| `/polar rotate <player>` | `polaraddon.rotate` | Rotates an online player to a random yaw. |
+| `/polar knockback <player>` | `polaraddon.knockback` | Applies a moderate knockback from the player's current facing direction. |
+| `/polar kb <player>` | `polaraddon.knockback` | Alias for `/polar knockback`. |
+| `/polar test <player>` | `polaraddon.test` | Applies random rotation and moderate knockback together. |
+| `/polar summon <player> <blaze|skeleton>` | `polaraddon.summon` | Spawns a KillAura test mob near the player. |
+
+## Behavior
+
+- Knockback checks the block in front of the player and cancels horizontal push when it would drive them into a solid block.
+- `/polar summon` only tries left, right, and behind the player, never directly in front.
+- Summoned KillAura test mobs are placed 2-3 blocks away when there is solid ground and enough open body space.
+- Supported summon mobs are `blaze` and `skeleton`.
 - Polar API listeners log detection alerts, mitigations, and punishments.
 
 ## Requirements
@@ -35,10 +44,20 @@ The shaded plugin jar is produced under `target/`.
 
 ## Permissions
 
-- `polaraddon.use` allows access to the `/polar` command root.
-- `polaraddon.rotate` allows `/polar rotate`.
-- `polaraddon.knockback` allows `/polar knockback`.
-- `polaraddon.test` allows `/polar test`.
-- `polaraddon.summon` allows `/polar summon`.
+`polaraddon.use` allows access to the `/polar` command root. Each action also requires its own permission:
+
+- `polaraddon.rotate`
+- `polaraddon.knockback`
+- `polaraddon.test`
+- `polaraddon.summon`
 
 All permissions default to server operators.
+
+## Releases
+
+The release workflow runs when a tag starting with `v` is pushed, for example:
+
+```sh
+git tag v1.0.1
+git push origin v1.0.1
+```
