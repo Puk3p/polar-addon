@@ -10,7 +10,7 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 | `/polar knockback <player>` | `polaraddon.knockback` | Applies a moderate knockback from the player's current facing direction. |
 | `/polar kb <player>` | `polaraddon.knockback` | Alias for `/polar knockback`. |
 | `/polar test <player>` | `polaraddon.test` | Applies random rotation and moderate knockback together. |
-| `/polar summon <player> <blaze|skeleton>` | `polaraddon.summon` | Spawns a KillAura test mob near the player. |
+| `/polar summon <player> <blaze\|skeleton>` | `polaraddon.summon` | Spawns a KillAura test mob near the player. |
 
 ## Behavior
 
