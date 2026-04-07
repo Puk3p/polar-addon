@@ -7,10 +7,14 @@ on:
   pull_request:
     branches: [ "**" ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Lint, Test & Analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -23,21 +27,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # Step 1 — Code formatting
-      - name: "Step 1: Spotless (code formatting)"
-        run: mvn spotless:check --batch-mode --no-transfer-progress
-
-      # Step 2 — Compile
-      - name: "Step 2: Compile"
-        run: mvn clean compile --batch-mode --no-transfer-progress
-
-      # Step 3 — Static analysis
-      - name: "Step 3: SpotBugs (static analysis)"
-        run: mvn spotbugs:check --batch-mode --no-transfer-progress
-
-      # Step 4 — Package JAR
-      - name: "Step 4: Package"
-        run: mvn package -DskipTests --batch-mode --no-transfer-progress
+      - name: Verify
+        run: mvn --batch-mode --no-transfer-progress verify
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

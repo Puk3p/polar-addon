@@ -12,6 +12,10 @@ jobs:
   release:
     name: Verify & Release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HAS_OPERATOR_ROLE: ${{ secrets.OPERATOR_ROLE_ID != '' }}
+      HAS_OPERATOR_WEBHOOK: ${{ secrets.URL_WEBHOOK_OPERATOR != '' }}
 
     steps:
       - name: Checkout code
@@ -31,21 +35,8 @@ jobs:
       - name: Set Maven version from tag
         run: mvn versions:set -DnewVersion=${{ steps.version.outputs.VERSION }} --batch-mode
 
-      # Step 1 — Code formatting
-      - name: "Step 1: Spotless (code formatting)"
-        run: mvn spotless:check --batch-mode --no-transfer-progress
-
-      # Step 2 — Compile
-      - name: "Step 2: Compile"
-        run: mvn clean compile --batch-mode --no-transfer-progress
-
-      # Step 3 — Static analysis
-      - name: "Step 3: SpotBugs (static analysis)"
-        run: mvn spotbugs:check --batch-mode --no-transfer-progress
-
-      # Step 4 — Package JAR
-      - name: "Step 4: Package"
-        run: mvn package -DskipTests --batch-mode --no-transfer-progress
+      - name: Verify
+        run: mvn --batch-mode --no-transfer-progress verify
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -56,6 +47,7 @@ jobs:
           prerelease: false
 
       - name: "Step 5: Post Discord Embed"
+        if: ${{ env.HAS_OPERATOR_WEBHOOK == 'true' && env.HAS_OPERATOR_ROLE == 'true' }}
         run: |
           JAR_NAME=$(basename $(ls target/polar-addon-*.jar | head -n 1))
           WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1489410922706505871"
@@ -81,6 +73,7 @@ jobs:
           }' "$WEBHOOK"
 
       - name: "Step 6: Upload JAR to Discord"
+        if: ${{ env.HAS_OPERATOR_WEBHOOK == 'true' }}
         run: |
           JAR_FILE=$(ls target/polar-addon-*.jar | head -n 1)
           WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1489410922706505871"
