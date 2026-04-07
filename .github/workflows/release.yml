@@ -13,9 +13,6 @@ jobs:
     name: Verify & Release
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      HAS_OPERATOR_ROLE: ${{ secrets.OPERATOR_ROLE_ID != '' }}
-      HAS_OPERATOR_WEBHOOK: ${{ secrets.URL_WEBHOOK_OPERATOR != '' }}
 
     steps:
       - name: Checkout code
@@ -47,10 +44,9 @@ jobs:
           prerelease: false
 
       - name: "Step 5: Post Discord Embed"
-        if: ${{ env.HAS_OPERATOR_WEBHOOK == 'true' && env.HAS_OPERATOR_ROLE == 'true' }}
         run: |
           JAR_NAME=$(basename $(ls target/polar-addon-*.jar | head -n 1))
-          WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1489410922706505871"
+          WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1491195440044052561"
 
           curl -X POST -H "Content-Type: application/json" -d '{
             "username": "Puk3p CI/CD",
@@ -73,7 +69,6 @@ jobs:
           }' "$WEBHOOK"
 
       - name: "Step 6: Upload JAR to Discord"
-        if: ${{ env.HAS_OPERATOR_WEBHOOK == 'true' }}
         run: |
           JAR_FILE=$(ls target/polar-addon-*.jar | head -n 1)
           WEBHOOK="${{ secrets.URL_WEBHOOK_OPERATOR }}?thread_id=1491195440044052561"
