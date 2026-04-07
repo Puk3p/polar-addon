@@ -18,7 +18,7 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 - `/polar summon` only tries left, right, and behind the player, never directly in front.
 - Summoned test mobs are placed 2-3 blocks away when there is solid ground and enough open body space.
 - Summoned mobs despawn automatically after 3 seconds and do not receive a custom name.
-- Supported summon mobs are `blaze`, `skeleton`, `zombie`, `creeper`, `spider`, `cave_spider`, `witch`, `enderman`, `pig_zombie`, `zombie_pigman`, `slime`, `magma_cube`, and `iron_golem`.
+- Supported summon mobs are `blaze`, `silverfish`, `zombie`, `skeleton`, `witch`, `creeper`, and `enderman`.
 - Polar API listeners log detection alerts, mitigations, and punishments.
 
 ## Requirements

@@ -284,18 +284,12 @@ class PolarCommand(
         val SUMMON_ENTITY_TYPES =
             linkedMapOf(
                 "blaze" to EntityType.BLAZE,
-                "skeleton" to EntityType.SKELETON,
+                "silverfish" to EntityType.SILVERFISH,
                 "zombie" to EntityType.ZOMBIE,
-                "creeper" to EntityType.CREEPER,
-                "spider" to EntityType.SPIDER,
-                "cave_spider" to EntityType.CAVE_SPIDER,
+                "skeleton" to EntityType.SKELETON,
                 "witch" to EntityType.WITCH,
+                "creeper" to EntityType.CREEPER,
                 "enderman" to EntityType.ENDERMAN,
-                "pig_zombie" to EntityType.PIG_ZOMBIE,
-                "zombie_pigman" to EntityType.PIG_ZOMBIE,
-                "slime" to EntityType.SLIME,
-                "magma_cube" to EntityType.MAGMA_CUBE,
-                "iron_golem" to EntityType.IRON_GOLEM,
             )
     }
 }
