@@ -28,6 +28,7 @@ class PolarCommand(
         when (args[0].lowercase()) {
             SUB_ROTATE -> handleRotate(sender, args)
             SUB_KNOCKBACK, SUB_KB -> handleKnockback(sender, args)
+            SUB_TEST -> handleTest(sender, args)
             else -> sendUsage(sender)
         }
         return true
@@ -47,11 +48,8 @@ class PolarCommand(
         }
 
         val playerName = args[1]
-        val yaw = kotlin.random.Random.nextFloat() * FULL_ROTATION_DEGREES
-        val pitch = DEFAULT_PITCH
-        val target = RotationTarget(yaw, pitch)
 
-        when (rotateUseCase.execute(playerName, target)) {
+        when (rotateUseCase.execute(playerName, randomRotationTarget())) {
             UseCaseResult.Ok ->
                 sender.sendMessage(
                     "$PREFIX§aRandomly rotated §e$playerName§a.",
@@ -86,9 +84,44 @@ class PolarCommand(
         }
     }
 
+    private fun handleTest(
+        sender: CommandSender,
+        args: Array<out String>,
+    ) {
+        if (!sender.hasPermission(PERM_TEST)) {
+            sender.sendMessage("$PREFIX§cYou don't have permission to use this command.")
+            return
+        }
+        if (args.size != 2) {
+            sender.sendMessage("$PREFIX§cUsage: /polar test <player>")
+            return
+        }
+
+        val playerName = args[1]
+        when (rotateUseCase.execute(playerName, randomRotationTarget())) {
+            UseCaseResult.Ok ->
+                when (knockbackUseCase.execute(playerName, DEFAULT_STRENGTH)) {
+                    UseCaseResult.Ok ->
+                        sender.sendMessage("$PREFIX§aTested §e$playerName §awith random rotation and knockback.")
+                    UseCaseResult.PlayerNotFound ->
+                        sender.sendMessage("$PREFIX§cPlayer §e$playerName §cis not online.")
+                }
+            UseCaseResult.PlayerNotFound ->
+                sender.sendMessage("$PREFIX§cPlayer §e$playerName §cis not online.")
+        }
+    }
+
+    private fun randomRotationTarget(): RotationTarget {
+        return RotationTarget(
+            yaw = kotlin.random.Random.nextFloat() * FULL_ROTATION_DEGREES,
+            pitch = DEFAULT_PITCH,
+        )
+    }
+
     private fun sendUsage(sender: CommandSender) {
         sender.sendMessage("$PREFIX§7/polar rotate <player>")
         sender.sendMessage("$PREFIX§7/polar knockback <player>")
+        sender.sendMessage("$PREFIX§7/polar test <player>")
     }
 
     override fun onTabComplete(
@@ -99,14 +132,15 @@ class PolarCommand(
     ): List<String> {
         return when (args.size) {
             1 ->
-                listOf(SUB_ROTATE, SUB_KNOCKBACK)
+                availableSubcommands(sender)
                     .filter { it.startsWith(args[0].lowercase()) }
             2 -> {
                 val sub = args[0].lowercase()
                 val hasPermission =
                     (sub == SUB_ROTATE && sender.hasPermission(PERM_ROTATE)) ||
                         (sub == SUB_KNOCKBACK && sender.hasPermission(PERM_KNOCKBACK)) ||
-                        (sub == SUB_KB && sender.hasPermission(PERM_KNOCKBACK))
+                        (sub == SUB_KB && sender.hasPermission(PERM_KNOCKBACK)) ||
+                        (sub == SUB_TEST && sender.hasPermission(PERM_TEST))
                 if (hasPermission) {
                     Bukkit.getOnlinePlayers()
                         .map { it.name }
@@ -119,13 +153,30 @@ class PolarCommand(
         }
     }
 
+    private fun availableSubcommands(sender: CommandSender): List<String> {
+        return buildList {
+            if (sender.hasPermission(PERM_ROTATE)) {
+                add(SUB_ROTATE)
+            }
+            if (sender.hasPermission(PERM_KNOCKBACK)) {
+                add(SUB_KNOCKBACK)
+                add(SUB_KB)
+            }
+            if (sender.hasPermission(PERM_TEST)) {
+                add(SUB_TEST)
+            }
+        }
+    }
+
     private companion object {
         const val PREFIX = "§8[§bPolarAddon§8] §r"
         const val PERM_ROTATE = "polaraddon.rotate"
         const val PERM_KNOCKBACK = "polaraddon.knockback"
+        const val PERM_TEST = "polaraddon.test"
         const val SUB_ROTATE = "rotate"
         const val SUB_KNOCKBACK = "knockback"
         const val SUB_KB = "kb"
+        const val SUB_TEST = "test"
         const val FULL_ROTATION_DEGREES = 360f
         const val DEFAULT_PITCH = 0f
         const val DEFAULT_STRENGTH = 0.8

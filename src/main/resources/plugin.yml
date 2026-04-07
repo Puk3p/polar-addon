@@ -11,8 +11,8 @@ depend:
 
 commands:
   polar:
-    description: PolarAddon staff commands (rotate / knockback)
-    usage: /polar <rotate|knockback> <player>
+    description: PolarAddon staff commands (rotate / knockback / test)
+    usage: /polar <rotate|knockback|test> <player>
     permission: polaraddon.use
 
 permissions:
@@ -26,4 +26,8 @@ permissions:
 
   polaraddon.knockback:
     description: Apply a knockback impulse to a player (/polar knockback)
+    default: op
+
+  polaraddon.test:
+    description: Apply random rotation and knockback to a player (/polar test)
     default: op

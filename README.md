@@ -6,6 +6,7 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 
 - `/polar rotate <player>` rotates an online player to a random yaw.
 - `/polar knockback <player>` applies a moderate knockback from the player's current facing direction.
+- `/polar test <player>` applies a random rotation and moderate knockback together.
 - Knockback checks the space in front of the player and cancels horizontal push when it would drive them into a solid block.
 - Polar API listeners log detection alerts, mitigations, and punishments.
 
@@ -36,5 +37,6 @@ The shaded plugin jar is produced under `target/`.
 - `polaraddon.use` allows access to the `/polar` command root.
 - `polaraddon.rotate` allows `/polar rotate`.
 - `polaraddon.knockback` allows `/polar knockback`.
+- `polaraddon.test` allows `/polar test`.
 
 All permissions default to server operators.
