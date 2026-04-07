@@ -11,8 +11,8 @@ depend:
 
 commands:
   polar:
-    description: PolarAddon staff commands (rotate / knockback / test)
-    usage: /polar <rotate|knockback|test> <player>
+    description: PolarAddon staff commands (rotate / knockback / test / summon)
+    usage: /polar <rotate|knockback|test|summon> <player> [blaze|skeleton]
     permission: polaraddon.use
 
 permissions:
@@ -30,4 +30,8 @@ permissions:
 
   polaraddon.test:
     description: Apply random rotation and knockback to a player (/polar test)
+    default: op
+
+  polaraddon.summon:
+    description: Spawn a KillAura test mob near a player (/polar summon)
     default: op

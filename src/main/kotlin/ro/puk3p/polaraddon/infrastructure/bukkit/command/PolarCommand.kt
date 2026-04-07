@@ -1,14 +1,21 @@
 package ro.puk3p.polaraddon.infrastructure.bukkit.command
 
 import org.bukkit.Bukkit
+import org.bukkit.Location
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
+import org.bukkit.entity.EntityType
+import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Player
+import org.bukkit.util.Vector
 import ro.puk3p.polaraddon.application.result.UseCaseResult
 import ro.puk3p.polaraddon.application.usecase.KnockbackPlayerUseCase
 import ro.puk3p.polaraddon.application.usecase.RotatePlayerUseCase
 import ro.puk3p.polaraddon.domain.model.RotationTarget
+import kotlin.math.cos
+import kotlin.math.sin
 
 class PolarCommand(
     private val rotateUseCase: RotatePlayerUseCase,
@@ -29,6 +36,7 @@ class PolarCommand(
             SUB_ROTATE -> handleRotate(sender, args)
             SUB_KNOCKBACK, SUB_KB -> handleKnockback(sender, args)
             SUB_TEST -> handleTest(sender, args)
+            SUB_SUMMON -> handleSummon(sender, args)
             else -> sendUsage(sender)
         }
         return true
@@ -111,6 +119,77 @@ class PolarCommand(
         }
     }
 
+    private fun handleSummon(
+        sender: CommandSender,
+        args: Array<out String>,
+    ) {
+        if (!sender.hasPermission(PERM_SUMMON)) {
+            sender.sendMessage("$PREFIX§cYou don't have permission to use this command.")
+            return
+        }
+        if (args.size != 3) {
+            sender.sendMessage("$PREFIX§cUsage: /polar summon <player> <blaze|skeleton>")
+            return
+        }
+
+        val playerName = args[1]
+        val entityType =
+            when (args[2].lowercase()) {
+                ENTITY_BLAZE -> EntityType.BLAZE
+                ENTITY_SKELETON -> EntityType.SKELETON
+                else -> {
+                    sender.sendMessage("$PREFIX§cMob must be §eblaze §cor §eskeleton§c.")
+                    return
+                }
+            }
+
+        val player =
+            Bukkit.getPlayerExact(playerName)
+                ?: run {
+                    sender.sendMessage("$PREFIX§cPlayer §e$playerName §cis not online.")
+                    return
+                }
+
+        val spawnLocation =
+            findSideOrBehindLocation(player)
+                ?: run {
+                    sender.sendMessage("$PREFIX§cCould not find a safe left, right, or behind space near §e$playerName§c.")
+                    return
+                }
+
+        val entity = player.world.spawnEntity(spawnLocation, entityType) as LivingEntity
+        entity.customName = "Polar KillAura Test"
+        entity.isCustomNameVisible = true
+
+        sender.sendMessage("$PREFIX§aSpawned §e${args[2].lowercase()} §anear §e$playerName §afor KillAura testing.")
+    }
+
+    private fun findSideOrBehindLocation(player: Player): Location? {
+        val yawRad = Math.toRadians(player.location.yaw.toDouble())
+        val forward = Vector(sin(yawRad), 0.0, -cos(yawRad))
+        val left = Vector(forward.z, 0.0, -forward.x)
+        val right = Vector(-forward.z, 0.0, forward.x)
+        val behind = forward.clone().multiply(-1.0)
+
+        val candidates =
+            listOf(left, right, behind)
+                .shuffled()
+                .flatMap { direction ->
+                    SUMMON_DISTANCES.map { distance ->
+                        player.location.clone().add(direction.clone().normalize().multiply(distance))
+                    }
+                }
+
+        return candidates.firstOrNull(::isSpawnSpaceClear)
+    }
+
+    private fun isSpawnSpaceClear(location: Location): Boolean {
+        val feet = location.block
+        val body = location.clone().add(0.0, 1.0, 0.0).block
+        val ground = location.clone().add(0.0, -1.0, 0.0).block
+        return !feet.type.isSolid && !body.type.isSolid && ground.type.isSolid
+    }
+
     private fun randomRotationTarget(): RotationTarget {
         return RotationTarget(
             yaw = kotlin.random.Random.nextFloat() * FULL_ROTATION_DEGREES,
@@ -122,6 +201,7 @@ class PolarCommand(
         sender.sendMessage("$PREFIX§7/polar rotate <player>")
         sender.sendMessage("$PREFIX§7/polar knockback <player>")
         sender.sendMessage("$PREFIX§7/polar test <player>")
+        sender.sendMessage("$PREFIX§7/polar summon <player> <blaze|skeleton>")
     }
 
     override fun onTabComplete(
@@ -140,7 +220,8 @@ class PolarCommand(
                     (sub == SUB_ROTATE && sender.hasPermission(PERM_ROTATE)) ||
                         (sub == SUB_KNOCKBACK && sender.hasPermission(PERM_KNOCKBACK)) ||
                         (sub == SUB_KB && sender.hasPermission(PERM_KNOCKBACK)) ||
-                        (sub == SUB_TEST && sender.hasPermission(PERM_TEST))
+                        (sub == SUB_TEST && sender.hasPermission(PERM_TEST)) ||
+                        (sub == SUB_SUMMON && sender.hasPermission(PERM_SUMMON))
                 if (hasPermission) {
                     Bukkit.getOnlinePlayers()
                         .map { it.name }
@@ -149,6 +230,13 @@ class PolarCommand(
                     emptyList()
                 }
             }
+            3 ->
+                if (args[0].equals(SUB_SUMMON, ignoreCase = true) && sender.hasPermission(PERM_SUMMON)) {
+                    listOf(ENTITY_BLAZE, ENTITY_SKELETON)
+                        .filter { it.startsWith(args[2].lowercase()) }
+                } else {
+                    emptyList()
+                }
             else -> emptyList()
         }
     }
@@ -165,6 +253,9 @@ class PolarCommand(
             if (sender.hasPermission(PERM_TEST)) {
                 add(SUB_TEST)
             }
+            if (sender.hasPermission(PERM_SUMMON)) {
+                add(SUB_SUMMON)
+            }
         }
     }
 
@@ -173,12 +264,17 @@ class PolarCommand(
         const val PERM_ROTATE = "polaraddon.rotate"
         const val PERM_KNOCKBACK = "polaraddon.knockback"
         const val PERM_TEST = "polaraddon.test"
+        const val PERM_SUMMON = "polaraddon.summon"
         const val SUB_ROTATE = "rotate"
         const val SUB_KNOCKBACK = "knockback"
         const val SUB_KB = "kb"
         const val SUB_TEST = "test"
+        const val SUB_SUMMON = "summon"
+        const val ENTITY_BLAZE = "blaze"
+        const val ENTITY_SKELETON = "skeleton"
         const val FULL_ROTATION_DEGREES = 360f
         const val DEFAULT_PITCH = 0f
         const val DEFAULT_STRENGTH = 0.8
+        val SUMMON_DISTANCES = doubleArrayOf(2.0, 3.0)
     }
 }
