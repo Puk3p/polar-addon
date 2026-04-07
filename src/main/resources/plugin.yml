@@ -1,5 +1,5 @@
 name: PolarAddon
-version: 1.0-SNAPSHOT
+version: 1.0.0
 main: ro.puk3p.polaraddon.PolarAddonPlugin
 api-version: "1.8"
 author: Puk3p
