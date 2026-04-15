@@ -1,0 +1,8 @@
+discord:
+  webhook-url: ""
+  username: "PolarAddon Alerts"
+  avatar-url: ""
+  alerts:
+    detection: true
+    mitigation: true
+    punishment: true

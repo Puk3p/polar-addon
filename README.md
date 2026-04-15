@@ -20,6 +20,24 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 - Summoned mobs despawn automatically after 3 seconds and do not receive a custom name.
 - Supported summon mobs are `blaze`, `silverfish`, `zombie`, `skeleton`, `witch`, `creeper`, and `enderman`.
 - Polar API listeners log detection alerts, mitigations, and punishments.
+- Polar alerts can also be sent as Discord webhook embeds.
+
+## Discord Alerts
+
+Configure `plugins/PolarAddon/config.yml`:
+
+```yaml
+discord:
+  webhook-url: "https://discord.com/api/webhooks/..."
+  username: "PolarAddon Alerts"
+  avatar-url: ""
+  alerts:
+    detection: true
+    mitigation: true
+    punishment: true
+```
+
+If `discord.webhook-url` is empty, Discord alerts are disabled.
 
 ## Requirements
 

@@ -16,6 +16,7 @@ class PolarAddonPlugin : JavaPlugin() {
     }
 
     override fun onEnable() {
+        saveDefaultConfig()
         PluginBootstrap(this).start()
         logger.info("PolarAddon enabled.")
     }
