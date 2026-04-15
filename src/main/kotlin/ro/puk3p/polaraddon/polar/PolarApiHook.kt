@@ -2,12 +2,16 @@ package ro.puk3p.polaraddon.polar
 
 import ro.puk3p.polaraddon.PolarAddonPlugin
 import ro.puk3p.polaraddon.infrastructure.discord.DiscordWebhookNotifier
+import ro.puk3p.polaraddon.infrastructure.discord.DiscordWebhookNotifier.DiscordEmbed
 import ro.puk3p.polaraddon.infrastructure.discord.DiscordWebhookNotifier.DiscordField
 import top.polar.api.PolarApiAccessor
 import top.polar.api.event.listener.repository.EventListenerRepository
 import top.polar.api.user.event.DetectionAlertEvent
 import top.polar.api.user.event.MitigationEvent
 import top.polar.api.user.event.PunishmentEvent
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.time.Instant
 
 object PolarApiHook {
     fun init() {
@@ -43,15 +47,20 @@ object PolarApiHook {
 
             if (discordBridge.detectionEnabled) {
                 discordBridge.notifier?.sendEmbed(
-                    title = "Polar Detection Alert",
-                    description = "A detection alert was triggered.",
-                    color = COLOR_DETECTION,
-                    fields =
-                        listOf(
-                            DiscordField("Player", playerName),
-                            DiscordField("Check", checkName),
-                            DiscordField("Violation Level", violationLevel),
-                        ),
+                    DiscordEmbed(
+                        title = "Polar Detection Alert",
+                        description = "Suspicious behavior detected by Polar.",
+                        color = COLOR_DETECTION,
+                        fields =
+                            listOf(
+                                DiscordField("Player", "`$playerName`"),
+                                DiscordField("Check", "`$checkName`"),
+                                DiscordField("Violation Level", "`$violationLevel`"),
+                            ),
+                        thumbnailUrl = playerSkinAvatarUrl(playerName),
+                        footerText = "PolarAddon • Detection",
+                        timestampIso8601 = Instant.now().toString(),
+                    ),
                 )
             }
         }
@@ -66,14 +75,19 @@ object PolarApiHook {
 
             if (discordBridge.mitigationEnabled) {
                 discordBridge.notifier?.sendEmbed(
-                    title = "Polar Mitigation",
-                    description = "Polar mitigated a suspicious action.",
-                    color = COLOR_MITIGATION,
-                    fields =
-                        listOf(
-                            DiscordField("Player", playerName),
-                            DiscordField("Check", checkName),
-                        ),
+                    DiscordEmbed(
+                        title = "Polar Mitigation",
+                        description = "Polar mitigated a suspicious action.",
+                        color = COLOR_MITIGATION,
+                        fields =
+                            listOf(
+                                DiscordField("Player", "`$playerName`"),
+                                DiscordField("Check", "`$checkName`"),
+                            ),
+                        thumbnailUrl = playerSkinAvatarUrl(playerName),
+                        footerText = "PolarAddon • Mitigation",
+                        timestampIso8601 = Instant.now().toString(),
+                    ),
                 )
             }
         }
@@ -87,16 +101,26 @@ object PolarApiHook {
 
             if (discordBridge.punishmentEnabled) {
                 discordBridge.notifier?.sendEmbed(
-                    title = "Polar Punishment",
-                    description = "Polar issued a punishment.",
-                    color = COLOR_PUNISHMENT,
-                    fields =
-                        listOf(
-                            DiscordField("Player", playerName),
-                        ),
+                    DiscordEmbed(
+                        title = "Polar Punishment",
+                        description = "Polar issued a punishment.",
+                        color = COLOR_PUNISHMENT,
+                        fields =
+                            listOf(
+                                DiscordField("Player", "`$playerName`"),
+                            ),
+                        thumbnailUrl = playerSkinAvatarUrl(playerName),
+                        footerText = "PolarAddon • Punishment",
+                        timestampIso8601 = Instant.now().toString(),
+                    ),
                 )
             }
         }
+    }
+
+    private fun playerSkinAvatarUrl(playerName: String): String {
+        val encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8.name())
+        return "https://mc-heads.net/avatar/$encoded/128"
     }
 
     private fun loadDiscordBridge(plugin: PolarAddonPlugin): DiscordBridge {

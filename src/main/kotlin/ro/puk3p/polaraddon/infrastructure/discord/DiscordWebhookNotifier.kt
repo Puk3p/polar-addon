@@ -13,33 +13,17 @@ class DiscordWebhookNotifier(
     private val username: String,
     private val avatarUrl: String?,
 ) {
-    fun sendEmbed(
-        title: String,
-        description: String,
-        color: Int,
-        fields: List<DiscordField>,
-    ) {
+    fun sendEmbed(embed: DiscordEmbed) {
         Bukkit.getScheduler().runTaskAsynchronously(
             plugin,
             Runnable {
-                val payload =
-                    buildPayload(
-                        title = title,
-                        description = description,
-                        color = color,
-                        fields = fields,
-                    )
+                val payload = buildPayload(embed)
                 post(payload)
             },
         )
     }
 
-    private fun buildPayload(
-        title: String,
-        description: String,
-        color: Int,
-        fields: List<DiscordField>,
-    ): String {
+    private fun buildPayload(embed: DiscordEmbed): String {
         val usernameJson = "\"username\":\"${escape(username)}\""
         val avatarJson =
             if (avatarUrl.isNullOrBlank()) {
@@ -49,18 +33,30 @@ class DiscordWebhookNotifier(
             }
 
         val fieldsJson =
-            fields.joinToString(",") { field ->
+            embed.fields.joinToString(",") { field ->
                 "{\"name\":\"${escape(field.name)}\",\"value\":\"${escape(field.value)}\",\"inline\":${field.inline}}"
             }
+
+        val thumbnailJson =
+            embed.thumbnailUrl?.let { ",\"thumbnail\":{\"url\":\"${escape(it)}\"}" } ?: ""
+
+        val footerJson =
+            embed.footerText?.let { ",\"footer\":{\"text\":\"${escape(it)}\"}" } ?: ""
+
+        val timestampJson =
+            embed.timestampIso8601?.let { ",\"timestamp\":\"${escape(it)}\"}" } ?: ""
 
         return "{" +
             usernameJson +
             avatarJson +
             ",\"embeds\":[{" +
-            "\"title\":\"${escape(title)}\"," +
-            "\"description\":\"${escape(description)}\"," +
-            "\"color\":$color," +
+            "\"title\":\"${escape(embed.title)}\"," +
+            "\"description\":\"${escape(embed.description)}\"," +
+            "\"color\":${embed.color}," +
             "\"fields\":[$fieldsJson]" +
+            thumbnailJson +
+            footerJson +
+            timestampJson +
             "}]" +
             "}"
     }
@@ -99,6 +95,16 @@ class DiscordWebhookNotifier(
         val name: String,
         val value: String,
         val inline: Boolean = true,
+    )
+
+    data class DiscordEmbed(
+        val title: String,
+        val description: String,
+        val color: Int,
+        val fields: List<DiscordField>,
+        val thumbnailUrl: String? = null,
+        val footerText: String? = null,
+        val timestampIso8601: String? = null,
     )
 
     private companion object {
