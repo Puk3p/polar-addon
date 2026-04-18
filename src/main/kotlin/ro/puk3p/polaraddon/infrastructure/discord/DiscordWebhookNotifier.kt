@@ -67,6 +67,8 @@ class DiscordWebhookNotifier(
             val connection = URL(webhookUrl).openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("User-Agent", DISCORD_WEBHOOK_USER_AGENT)
             connection.doOutput = true
             connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
             connection.readTimeout = READ_TIMEOUT_MILLIS
@@ -135,5 +137,7 @@ class DiscordWebhookNotifier(
         const val CONNECT_TIMEOUT_MILLIS = 5000
         const val READ_TIMEOUT_MILLIS = 5000
         const val MAX_LOG_RESPONSE_LENGTH = 400
+        const val DISCORD_WEBHOOK_USER_AGENT =
+            "Mozilla/5.0 (compatible; PolarAddon/1.0; +https://github.com/Puk3p/polar-addon)"
     }
 }
