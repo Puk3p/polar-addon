@@ -46,7 +46,7 @@ class DiscordWebhookNotifier(
             embed.footerText?.let { ",\"footer\":{\"text\":\"${escape(it)}\"}" } ?: ""
 
         val timestampJson =
-            embed.timestampIso8601?.let { ",\"timestamp\":\"${escape(it)}\"}" } ?: ""
+            embed.timestampIso8601?.let { ",\"timestamp\":\"${escape(it)}\"" } ?: ""
 
         return "{" +
             usernameJson +
