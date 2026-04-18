@@ -12,6 +12,7 @@ import top.polar.api.user.event.PunishmentEvent
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 object PolarApiHook {
     fun init() {
@@ -57,6 +58,10 @@ object PolarApiHook {
             val playerName = event.user().username()
             val checkName = event.check().name()
             val violationLevel = event.check().violationLevel().toString()
+            val dedupKey = "detection|$playerName|$checkName|$violationLevel"
+            if (!shouldProcessEvent(discordBridge, dedupKey)) {
+                return@registerListener
+            }
 
             plugin.logger.info(
                 "[Polar] Detection alert: player=$playerName, " +
@@ -86,6 +91,10 @@ object PolarApiHook {
         repo.registerListener(MitigationEvent::class.java) { event ->
             val playerName = event.user().username()
             val checkName = event.check().name()
+            val dedupKey = "mitigation|$playerName|$checkName"
+            if (!shouldProcessEvent(discordBridge, dedupKey)) {
+                return@registerListener
+            }
 
             plugin.logger.info(
                 "[Polar] Mitigation: player=$playerName, check=$checkName",
@@ -112,6 +121,10 @@ object PolarApiHook {
 
         repo.registerListener(PunishmentEvent::class.java) { event ->
             val playerName = event.user().username()
+            val dedupKey = "punishment|$playerName"
+            if (!shouldProcessEvent(discordBridge, dedupKey)) {
+                return@registerListener
+            }
 
             plugin.logger.info(
                 "[Polar] Punishment: player=$playerName",
@@ -146,6 +159,7 @@ object PolarApiHook {
         val webhookUrl = config.getString("discord.webhook-url", "").orEmpty().trim()
         val username = config.getString("discord.username", "PolarAddon").orEmpty()
         val avatarUrl = config.getString("discord.avatar-url", "").orEmpty().trim().ifBlank { null }
+        val dedupWindowMillis = config.getLong("discord.dedup-window-millis", 1250L)
 
         val detectionEnabled = config.getBoolean("discord.alerts.detection", true)
         val mitigationEnabled = config.getBoolean("discord.alerts.mitigation", true)
@@ -153,7 +167,13 @@ object PolarApiHook {
 
         if (webhookUrl.isBlank()) {
             plugin.logger.info("Discord webhook alerts are disabled (discord.webhook-url is empty).")
-            return DiscordBridge(null, detectionEnabled, mitigationEnabled, punishmentEnabled)
+            return DiscordBridge(
+                notifier = null,
+                detectionEnabled = detectionEnabled,
+                mitigationEnabled = mitigationEnabled,
+                punishmentEnabled = punishmentEnabled,
+                dedupWindowMillis = dedupWindowMillis.coerceAtLeast(0L),
+            )
         }
 
         plugin.logger.info("Discord webhook alerts are enabled.")
@@ -162,7 +182,38 @@ object PolarApiHook {
             detectionEnabled = detectionEnabled,
             mitigationEnabled = mitigationEnabled,
             punishmentEnabled = punishmentEnabled,
+            dedupWindowMillis = dedupWindowMillis.coerceAtLeast(0L),
         )
+    }
+
+    private fun shouldProcessEvent(
+        bridge: DiscordBridge,
+        eventKey: String,
+    ): Boolean {
+        val dedupWindowMillis = bridge.dedupWindowMillis
+        if (dedupWindowMillis <= 0L) {
+            return true
+        }
+
+        val now = System.currentTimeMillis()
+        val previous = recentEventTimes.put(eventKey, now)
+        if (previous != null && now - previous < dedupWindowMillis) {
+            return false
+        }
+
+        if (recentEventTimes.size > MAX_RECENT_EVENT_CACHE_SIZE) {
+            cleanupOldRecentEvents(now, dedupWindowMillis)
+        }
+
+        return true
+    }
+
+    private fun cleanupOldRecentEvents(
+        now: Long,
+        dedupWindowMillis: Long,
+    ) {
+        val staleAfterMillis = dedupWindowMillis * 4
+        recentEventTimes.entries.removeIf { now - it.value > staleAfterMillis }
     }
 
     private data class DiscordBridge(
@@ -170,13 +221,16 @@ object PolarApiHook {
         val detectionEnabled: Boolean,
         val mitigationEnabled: Boolean,
         val punishmentEnabled: Boolean,
+        val dedupWindowMillis: Long,
     )
 
     private const val COLOR_DETECTION = 15158332
     private const val COLOR_MITIGATION = 16776960
     private const val COLOR_PUNISHMENT = 10038562
+    private const val MAX_RECENT_EVENT_CACHE_SIZE = 2048
 
     private val LISTENER_LOCK = Any()
+    private val recentEventTimes = ConcurrentHashMap<String, Long>()
 
     @Volatile private var listenersRegistered = false
 }

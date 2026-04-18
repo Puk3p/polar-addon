@@ -2,6 +2,7 @@ discord:
   webhook-url: ""
   username: "PolarAddon Alerts"
   avatar-url: ""
+  dedup-window-millis: 1250
   alerts:
     detection: true
     mitigation: true
