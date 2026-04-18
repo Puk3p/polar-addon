@@ -42,6 +42,20 @@ class DiscordWebhookNotifier(
         val thumbnailJson =
             embed.thumbnailUrl?.let { ",\"thumbnail\":{\"url\":\"${escape(it)}\"}" } ?: ""
 
+        val authorJson =
+            embed.authorName
+                ?.takeIf { it.isNotBlank() }
+                ?.let { authorName ->
+                    val authorIconUrl = embed.authorIconUrl
+                    val iconSuffix =
+                        if (authorIconUrl.isNullOrBlank()) {
+                            ""
+                        } else {
+                            ",\"icon_url\":\"${escape(authorIconUrl)}\""
+                        }
+                    ",\"author\":{\"name\":\"${escape(authorName)}\"$iconSuffix}"
+                } ?: ""
+
         val footerJson =
             embed.footerText?.let { ",\"footer\":{\"text\":\"${escape(it)}\"}" } ?: ""
 
@@ -57,6 +71,7 @@ class DiscordWebhookNotifier(
             "\"color\":${embed.color}," +
             "\"fields\":[$fieldsJson]" +
             thumbnailJson +
+            authorJson +
             footerJson +
             timestampJson +
             "}]" +
@@ -203,6 +218,8 @@ class DiscordWebhookNotifier(
         val color: Int,
         val fields: List<DiscordField>,
         val thumbnailUrl: String? = null,
+        val authorName: String? = null,
+        val authorIconUrl: String? = null,
         val footerText: String? = null,
         val timestampIso8601: String? = null,
     )

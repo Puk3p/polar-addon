@@ -23,6 +23,7 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 - Supported summon mobs are `blaze`, `silverfish`, `zombie`, `skeleton`, `witch`, `creeper`, and `enderman`.
 - Polar API listeners log detection alerts, mitigations, and punishments.
 - Polar alerts can also be sent as Discord webhook embeds.
+- Detection alerts are grouped more patiently by player + check, with max violation level shown per burst.
 
 ## Discord Alerts
 
@@ -34,6 +35,14 @@ discord:
   username: "PolarAddon Alerts"
   avatar-url: ""
   aggregate-window-millis: 1250
+  aggregate-window-detection-millis: 2500
+  aggregate-window-mitigation-millis: 1250
+  aggregate-window-punishment-millis: 1250
+  player-avatar:
+    premium-skin-lookup-enabled: true
+    premium-skin-lookup-timeout-millis: 1200
+    premium-skin-lookup-cache-minutes: 60
+    fallback-url: "https://mc-heads.net/avatar/Steve/128"
   alerts:
     detection: true
     mitigation: true
@@ -41,7 +50,14 @@ discord:
 ```
 
 If `discord.webhook-url` is empty, Discord alerts are disabled.
-Use `discord.aggregate-window-millis` to group repeated identical alerts and send one embed with `xN`.
+Use aggregate windows to control patience:
+- `discord.aggregate-window-detection-millis`
+- `discord.aggregate-window-mitigation-millis`
+- `discord.aggregate-window-punishment-millis`
+
+Player avatar behavior:
+- If premium lookup is enabled and the username exists on Mojang, the embed uses that player's skin head.
+- If not premium (or lookup fails), it uses `discord.player-avatar.fallback-url`.
 
 ## Requirements
 
