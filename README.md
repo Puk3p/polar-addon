@@ -31,7 +31,7 @@ discord:
   webhook-url: "https://discord.com/api/webhooks/..."
   username: "PolarAddon Alerts"
   avatar-url: ""
-  dedup-window-millis: 1250
+  aggregate-window-millis: 1250
   alerts:
     detection: true
     mitigation: true
@@ -39,7 +39,7 @@ discord:
 ```
 
 If `discord.webhook-url` is empty, Discord alerts are disabled.
-Use `discord.dedup-window-millis` to suppress repeated identical alerts in short bursts.
+Use `discord.aggregate-window-millis` to group repeated identical alerts and send one embed with `xN`.
 
 ## Requirements
 
