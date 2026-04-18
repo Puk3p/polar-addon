@@ -16,6 +16,14 @@ import java.time.Instant
 object PolarApiHook {
     fun init() {
         val plugin = PolarAddonPlugin.instance
+
+        synchronized(LISTENER_LOCK) {
+            if (listenersRegistered) {
+                plugin.logger.info("Polar API listeners are already registered; skipping duplicate registration.")
+                return
+            }
+        }
+
         plugin.logger.info("Polar API initialised — registering event listeners.")
         val discordBridge = loadDiscordBridge(plugin)
 
@@ -27,6 +35,16 @@ object PolarApiHook {
                 }
 
         registerListeners(api.events().repository(), discordBridge)
+
+        synchronized(LISTENER_LOCK) {
+            listenersRegistered = true
+        }
+    }
+
+    fun reset() {
+        synchronized(LISTENER_LOCK) {
+            listenersRegistered = false
+        }
     }
 
     private fun registerListeners(
@@ -157,4 +175,8 @@ object PolarApiHook {
     private const val COLOR_DETECTION = 15158332
     private const val COLOR_MITIGATION = 16776960
     private const val COLOR_PUNISHMENT = 10038562
+
+    private val LISTENER_LOCK = Any()
+
+    @Volatile private var listenersRegistered = false
 }

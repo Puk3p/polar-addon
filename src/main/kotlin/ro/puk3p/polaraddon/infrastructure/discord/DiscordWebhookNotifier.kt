@@ -2,6 +2,7 @@ package ro.puk3p.polaraddon.infrastructure.discord
 
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
+import java.io.IOException
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
@@ -76,10 +77,33 @@ class DiscordWebhookNotifier(
 
             val code = connection.responseCode
             if (code !in 200..299 && code != 204) {
-                plugin.logger.warning("Discord webhook returned HTTP $code.")
+                val errorBody = readResponseBody(connection)
+                val suffix =
+                    if (errorBody.isBlank()) {
+                        ""
+                    } else {
+                        " Response: $errorBody"
+                    }
+                plugin.logger.warning("Discord webhook returned HTTP $code.$suffix")
+                if (code == HttpURLConnection.HTTP_FORBIDDEN) {
+                    plugin.logger.warning(
+                        "Discord webhook is forbidden (403). Check webhook URL/token, channel access, and thread permissions.",
+                    )
+                }
             }
-        } catch (exception: Exception) {
+        } catch (exception: IOException) {
             plugin.logger.warning("Failed to send Discord webhook: ${exception.message}")
+        }
+    }
+
+    private fun readResponseBody(connection: HttpURLConnection): String {
+        return try {
+            val stream = connection.errorStream ?: connection.inputStream ?: return ""
+            stream.bufferedReader(StandardCharsets.UTF_8).use { reader ->
+                reader.readText().trim().take(MAX_LOG_RESPONSE_LENGTH)
+            }
+        } catch (_: IOException) {
+            ""
         }
     }
 
@@ -110,5 +134,6 @@ class DiscordWebhookNotifier(
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 5000
         const val READ_TIMEOUT_MILLIS = 5000
+        const val MAX_LOG_RESPONSE_LENGTH = 400
     }
 }

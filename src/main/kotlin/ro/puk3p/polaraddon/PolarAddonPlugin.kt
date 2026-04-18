@@ -22,6 +22,7 @@ class PolarAddonPlugin : JavaPlugin() {
     }
 
     override fun onDisable() {
+        PolarApiHook.reset()
         logger.info("PolarAddon disabled.")
     }
 }
