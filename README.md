@@ -6,11 +6,13 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 
 | Command | Permission | What it does |
 | --- | --- | --- |
-| `/polar rotate <player>` | `polaraddon.rotate` | Rotates an online player to a random yaw. |
-| `/polar knockback <player>` | `polaraddon.knockback` | Applies a moderate knockback from the player's current facing direction. |
-| `/polar kb <player>` | `polaraddon.knockback` | Alias for `/polar knockback`. |
-| `/polar test <player>` | `polaraddon.test` | Applies random rotation and moderate knockback together. |
-| `/polar summon <player> <mob>` | `polaraddon.summon` | Spawns a temporary KillAura or grinder test mob near the player. |
+| `/pa rotate <player>` | `polaraddon.rotate` | Rotates an online player to a random yaw. |
+| `/pa knockback <player>` | `polaraddon.knockback` | Applies a moderate knockback from the player's current facing direction. |
+| `/pa kb <player>` | `polaraddon.knockback` | Alias for `/pa knockback`. |
+| `/pa test <player>` | `polaraddon.test` | Applies random rotation and moderate knockback together. |
+| `/pa summon <player> <mob>` | `polaraddon.summon` | Spawns a temporary KillAura or grinder test mob near the player. |
+| `/pa reload` | `polaraddon.reload` | Reloads plugin config (including Discord alert settings). |
+| `/polaraddon ...` | `polaraddon.use` + sub-permission | Alias for `/pa`. |
 
 ## Behavior
 
@@ -65,12 +67,13 @@ The shaded plugin jar is produced under `target/`.
 
 ## Permissions
 
-`polaraddon.use` allows access to the `/polar` command root. Each action also requires its own permission:
+`polaraddon.use` allows access to the `/pa` command root. Each action also requires its own permission:
 
 - `polaraddon.rotate`
 - `polaraddon.knockback`
 - `polaraddon.test`
 - `polaraddon.summon`
+- `polaraddon.reload`
 
 All permissions default to server operators.
 

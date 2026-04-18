@@ -14,6 +14,7 @@ import ro.puk3p.polaraddon.application.result.UseCaseResult
 import ro.puk3p.polaraddon.application.usecase.KnockbackPlayerUseCase
 import ro.puk3p.polaraddon.application.usecase.RotatePlayerUseCase
 import ro.puk3p.polaraddon.domain.model.RotationTarget
+import ro.puk3p.polaraddon.polar.PolarApiHook
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -38,6 +39,7 @@ class PolarCommand(
             SUB_KNOCKBACK, SUB_KB -> handleKnockback(sender, args)
             SUB_TEST -> handleTest(sender, args)
             SUB_SUMMON -> handleSummon(sender, args)
+            SUB_RELOAD -> handleReload(sender, args)
             else -> sendUsage(sender)
         }
         return true
@@ -52,7 +54,7 @@ class PolarCommand(
             return
         }
         if (args.size != 2) {
-            sender.sendMessage("$PREFIX§cUsage: /polar rotate <player>")
+            sender.sendMessage("$PREFIX§cUsage: /pa rotate <player>")
             return
         }
 
@@ -77,7 +79,7 @@ class PolarCommand(
             return
         }
         if (args.size != 2) {
-            sender.sendMessage("$PREFIX§cUsage: /polar knockback <player>")
+            sender.sendMessage("$PREFIX§cUsage: /pa knockback <player>")
             return
         }
 
@@ -102,7 +104,7 @@ class PolarCommand(
             return
         }
         if (args.size != 2) {
-            sender.sendMessage("$PREFIX§cUsage: /polar test <player>")
+            sender.sendMessage("$PREFIX§cUsage: /pa test <player>")
             return
         }
 
@@ -129,7 +131,7 @@ class PolarCommand(
             return
         }
         if (args.size != 3) {
-            sender.sendMessage("$PREFIX§cUsage: /polar summon <player> <mob>")
+            sender.sendMessage("$PREFIX§cUsage: /pa summon <player> <mob>")
             return
         }
 
@@ -170,6 +172,24 @@ class PolarCommand(
         sender.sendMessage("$PREFIX§aSpawned §e$mobName §anear §e$playerName §afor 3 seconds.")
     }
 
+    private fun handleReload(
+        sender: CommandSender,
+        args: Array<out String>,
+    ) {
+        if (!sender.hasPermission(PERM_RELOAD)) {
+            sender.sendMessage("$PREFIX§cYou don't have permission to use this command.")
+            return
+        }
+        if (args.size != 1) {
+            sender.sendMessage("$PREFIX§cUsage: /pa reload")
+            return
+        }
+
+        plugin.reloadConfig()
+        PolarApiHook.reloadConfig()
+        sender.sendMessage("$PREFIX§aConfiguration reloaded.")
+    }
+
     private fun findSideOrBehindLocation(player: Player): Location? {
         val yawRad = Math.toRadians(player.location.yaw.toDouble())
         val forward = Vector(sin(yawRad), 0.0, -cos(yawRad))
@@ -204,10 +224,11 @@ class PolarCommand(
     }
 
     private fun sendUsage(sender: CommandSender) {
-        sender.sendMessage("$PREFIX§7/polar rotate <player>")
-        sender.sendMessage("$PREFIX§7/polar knockback <player>")
-        sender.sendMessage("$PREFIX§7/polar test <player>")
-        sender.sendMessage("$PREFIX§7/polar summon <player> <mob>")
+        sender.sendMessage("$PREFIX§7/pa rotate <player>")
+        sender.sendMessage("$PREFIX§7/pa knockback <player>")
+        sender.sendMessage("$PREFIX§7/pa test <player>")
+        sender.sendMessage("$PREFIX§7/pa summon <player> <mob>")
+        sender.sendMessage("$PREFIX§7/pa reload")
     }
 
     override fun onTabComplete(
@@ -262,6 +283,9 @@ class PolarCommand(
             if (sender.hasPermission(PERM_SUMMON)) {
                 add(SUB_SUMMON)
             }
+            if (sender.hasPermission(PERM_RELOAD)) {
+                add(SUB_RELOAD)
+            }
         }
     }
 
@@ -271,11 +295,13 @@ class PolarCommand(
         const val PERM_KNOCKBACK = "polaraddon.knockback"
         const val PERM_TEST = "polaraddon.test"
         const val PERM_SUMMON = "polaraddon.summon"
+        const val PERM_RELOAD = "polaraddon.reload"
         const val SUB_ROTATE = "rotate"
         const val SUB_KNOCKBACK = "knockback"
         const val SUB_KB = "kb"
         const val SUB_TEST = "test"
         const val SUB_SUMMON = "summon"
+        const val SUB_RELOAD = "reload"
         const val FULL_ROTATION_DEGREES = 360f
         const val DEFAULT_PITCH = 0f
         const val DEFAULT_STRENGTH = 1.6

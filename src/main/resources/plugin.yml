@@ -10,9 +10,11 @@ depend:
   - PolarLoader
 
 commands:
-  polar:
-    description: PolarAddon staff commands (rotate / knockback / test / summon)
-    usage: /polar <rotate|knockback|test|summon> <player> [mob]
+  pa:
+    description: PolarAddon staff commands (rotate / knockback / test / summon / reload)
+    usage: /pa <rotate|knockback|test|summon|reload> [player] [mob]
+    aliases:
+      - polaraddon
     permission: polaraddon.use
 
 permissions:
@@ -34,4 +36,8 @@ permissions:
 
   polaraddon.summon:
     description: Spawn a KillAura test mob near a player (/polar summon)
+    default: op
+
+  polaraddon.reload:
+    description: Reload PolarAddon config and Discord bridge (/polar reload)
     default: op

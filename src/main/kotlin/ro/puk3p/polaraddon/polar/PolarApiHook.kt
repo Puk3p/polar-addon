@@ -18,6 +18,8 @@ import java.util.concurrent.ConcurrentHashMap
 object PolarApiHook {
     fun init() {
         val plugin = PolarAddonPlugin.instance
+        val loadedBridge = loadDiscordBridge(plugin)
+        discordBridge = loadedBridge
 
         synchronized(LISTENER_LOCK) {
             if (listenersRegistered) {
@@ -27,7 +29,6 @@ object PolarApiHook {
         }
 
         plugin.logger.info("Polar API initialised — registering event listeners.")
-        val discordBridge = loadDiscordBridge(plugin)
 
         val api =
             PolarApiAccessor.access().get()
@@ -36,7 +37,7 @@ object PolarApiHook {
                     return
                 }
 
-        registerListeners(api.events().repository(), discordBridge)
+        registerListeners(api.events().repository())
 
         synchronized(LISTENER_LOCK) {
             listenersRegistered = true
@@ -48,21 +49,30 @@ object PolarApiHook {
             listenersRegistered = false
             pendingAlerts.clear()
         }
+        discordBridge = DiscordBridge.disabled()
     }
 
-    private fun registerListeners(
-        repo: EventListenerRepository,
-        discordBridge: DiscordBridge,
-    ) {
+    fun reloadConfig() {
+        val plugin = PolarAddonPlugin.instance
+        val loadedBridge = loadDiscordBridge(plugin)
+        synchronized(ALERT_AGGREGATION_LOCK) {
+            pendingAlerts.clear()
+        }
+        discordBridge = loadedBridge
+        plugin.logger.info("Polar alert bridge reloaded from config.")
+    }
+
+    private fun registerListeners(repo: EventListenerRepository) {
         repo.registerListener(DetectionAlertEvent::class.java) { event ->
+            val bridge = discordBridge
             val playerName = event.user().username()
             val checkName = event.check().name()
             val violationLevel = event.check().violationLevel().toString()
             val aggregateKey = "detection|$playerName|$checkName|$violationLevel"
 
-            if (discordBridge.detectionEnabled) {
+            if (bridge.detectionEnabled) {
                 queueAggregatedAlert(
-                    bridge = discordBridge,
+                    bridge = bridge,
                     aggregateKey = aggregateKey,
                     template =
                         AlertTemplate(
@@ -88,13 +98,14 @@ object PolarApiHook {
         }
 
         repo.registerListener(MitigationEvent::class.java) { event ->
+            val bridge = discordBridge
             val playerName = event.user().username()
             val checkName = event.check().name()
             val aggregateKey = "mitigation|$playerName|$checkName"
 
-            if (discordBridge.mitigationEnabled) {
+            if (bridge.mitigationEnabled) {
                 queueAggregatedAlert(
-                    bridge = discordBridge,
+                    bridge = bridge,
                     aggregateKey = aggregateKey,
                     template =
                         AlertTemplate(
@@ -119,12 +130,13 @@ object PolarApiHook {
         }
 
         repo.registerListener(PunishmentEvent::class.java) { event ->
+            val bridge = discordBridge
             val playerName = event.user().username()
             val aggregateKey = "punishment|$playerName"
 
-            if (discordBridge.punishmentEnabled) {
+            if (bridge.punishmentEnabled) {
                 queueAggregatedAlert(
-                    bridge = discordBridge,
+                    bridge = bridge,
                     aggregateKey = aggregateKey,
                     template =
                         AlertTemplate(
@@ -281,7 +293,19 @@ object PolarApiHook {
         val mitigationEnabled: Boolean,
         val punishmentEnabled: Boolean,
         val aggregateWindowMillis: Long,
-    )
+    ) {
+        companion object {
+            fun disabled(): DiscordBridge {
+                return DiscordBridge(
+                    notifier = null,
+                    detectionEnabled = false,
+                    mitigationEnabled = false,
+                    punishmentEnabled = false,
+                    aggregateWindowMillis = 1250L,
+                )
+            }
+        }
+    }
 
     private const val COLOR_DETECTION = 15158332
     private const val COLOR_MITIGATION = 16776960
@@ -292,4 +316,6 @@ object PolarApiHook {
     private val pendingAlerts = ConcurrentHashMap<String, PendingAlert>()
 
     @Volatile private var listenersRegistered = false
+
+    @Volatile private var discordBridge: DiscordBridge = DiscordBridge.disabled()
 }
