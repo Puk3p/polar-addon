@@ -7,6 +7,7 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import kotlin.math.roundToLong
 
 class DiscordWebhookNotifier(
     private val plugin: JavaPlugin,
@@ -64,7 +65,54 @@ class DiscordWebhookNotifier(
 
     private fun post(payload: String) {
         try {
-            val connection = URL(webhookUrl).openConnection() as HttpURLConnection
+            synchronized(SEND_LOCK) {
+                sendWithRetry(payload)
+            }
+        } catch (exception: IOException) {
+            plugin.logger.warning("Failed to send Discord webhook: ${exception.message}")
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun sendWithRetry(payload: String) {
+        var attempt = 0
+        while (attempt < MAX_RETRY_ATTEMPTS) {
+            waitForRateLimitWindow()
+            val response = executeRequest(payload)
+            if (response.code in 200..299 || response.code == 204) {
+                return
+            }
+
+            if (response.code == HTTP_TOO_MANY_REQUESTS) {
+                val retryAfterMillis = parseRetryAfterMillis(response.body)
+                nextAllowedRequestAtMillis = System.currentTimeMillis() + retryAfterMillis
+                attempt += 1
+                if (attempt < MAX_RETRY_ATTEMPTS) {
+                    Thread.sleep(retryAfterMillis)
+                    continue
+                }
+            }
+
+            val suffix =
+                if (response.body.isBlank()) {
+                    ""
+                } else {
+                    " Response: ${response.body}"
+                }
+            plugin.logger.warning("Discord webhook returned HTTP ${response.code}.$suffix")
+            if (response.code == HttpURLConnection.HTTP_FORBIDDEN) {
+                plugin.logger.warning(
+                    "Discord webhook is forbidden (403). Check webhook URL/token, channel access, and thread permissions.",
+                )
+            }
+            return
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun executeRequest(payload: String): HttpResponse {
+        val connection = URL(webhookUrl).openConnection() as HttpURLConnection
+        try {
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
             connection.setRequestProperty("Accept", "application/json")
@@ -77,25 +125,31 @@ class DiscordWebhookNotifier(
                 it.write(payload)
             }
 
-            val code = connection.responseCode
-            if (code !in 200..299 && code != 204) {
-                val errorBody = readResponseBody(connection)
-                val suffix =
-                    if (errorBody.isBlank()) {
-                        ""
-                    } else {
-                        " Response: $errorBody"
-                    }
-                plugin.logger.warning("Discord webhook returned HTTP $code.$suffix")
-                if (code == HttpURLConnection.HTTP_FORBIDDEN) {
-                    plugin.logger.warning(
-                        "Discord webhook is forbidden (403). Check webhook URL/token, channel access, and thread permissions.",
-                    )
-                }
-            }
-        } catch (exception: IOException) {
-            plugin.logger.warning("Failed to send Discord webhook: ${exception.message}")
+            return HttpResponse(
+                code = connection.responseCode,
+                body = readResponseBody(connection),
+            )
+        } finally {
+            connection.disconnect()
         }
+    }
+
+    private fun waitForRateLimitWindow() {
+        val waitMillis = nextAllowedRequestAtMillis - System.currentTimeMillis()
+        if (waitMillis > 0L) {
+            try {
+                Thread.sleep(waitMillis)
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw IOException("Interrupted while waiting for Discord rate limit window", interrupted)
+            }
+        }
+    }
+
+    private fun parseRetryAfterMillis(responseBody: String): Long {
+        val match = RETRY_AFTER_REGEX.find(responseBody) ?: return DEFAULT_RETRY_AFTER_MILLIS
+        val seconds = match.groupValues.getOrNull(1)?.toDoubleOrNull() ?: return DEFAULT_RETRY_AFTER_MILLIS
+        return (seconds * 1000.0).roundToLong().coerceAtLeast(MIN_RETRY_AFTER_MILLIS)
     }
 
     private fun readResponseBody(connection: HttpURLConnection): String {
@@ -110,12 +164,32 @@ class DiscordWebhookNotifier(
     }
 
     private fun escape(value: String): String {
-        return value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
+        val escaped = StringBuilder(value.length + 16)
+        value.forEach { char ->
+            when (char) {
+                '\\' -> escaped.append("\\\\")
+                '"' -> escaped.append("\\\"")
+                '\b' -> escaped.append("\\b")
+                '\u000C' -> escaped.append("\\f")
+                '\n' -> escaped.append("\\n")
+                '\r' -> escaped.append("\\r")
+                '\t' -> escaped.append("\\t")
+                else -> {
+                    if (char.code < 0x20) {
+                        escaped.append("\\u%04x".format(char.code))
+                    } else {
+                        escaped.append(char)
+                    }
+                }
+            }
+        }
+        return escaped.toString()
     }
+
+    private data class HttpResponse(
+        val code: Int,
+        val body: String,
+    )
 
     data class DiscordField(
         val name: String,
@@ -139,5 +213,14 @@ class DiscordWebhookNotifier(
         const val MAX_LOG_RESPONSE_LENGTH = 400
         const val DISCORD_WEBHOOK_USER_AGENT =
             "Mozilla/5.0 (compatible; PolarAddon/1.0; +https://github.com/Puk3p/polar-addon)"
+        const val HTTP_TOO_MANY_REQUESTS = 429
+        const val MAX_RETRY_ATTEMPTS = 3
+        const val MIN_RETRY_AFTER_MILLIS = 250L
+        const val DEFAULT_RETRY_AFTER_MILLIS = 1000L
+        val RETRY_AFTER_REGEX = Regex("\"retry_after\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)")
+        val SEND_LOCK = Any()
     }
+
+    @Volatile
+    private var nextAllowedRequestAtMillis: Long = 0L
 }
