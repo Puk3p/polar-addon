@@ -6,10 +6,12 @@ import ro.puk3p.polaraddon.infrastructure.discord.DiscordWebhookNotifier
 import ro.puk3p.polaraddon.infrastructure.discord.DiscordWebhookNotifier.DiscordEmbed
 import ro.puk3p.polaraddon.infrastructure.discord.DiscordWebhookNotifier.DiscordField
 import top.polar.api.PolarApiAccessor
+import top.polar.api.check.cloud.CloudCheck
 import top.polar.api.event.listener.repository.EventListenerRepository
 import top.polar.api.user.event.DetectionAlertEvent
 import top.polar.api.user.event.MitigationEvent
 import top.polar.api.user.event.PunishmentEvent
+import top.polar.api.user.event.type.CloudCheckType
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -72,13 +74,20 @@ object PolarApiHook {
             val playerName = event.user().username()
             val checkName = event.check().name()
             val violationLevel = event.check().violationLevel()
+            val cloudCheckType = (event.check() as? CloudCheck)?.type()
             val aggregateKey = "detection|$playerName|$checkName"
             val avatarUrl = resolvePlayerAvatarUrl(playerName, bridge)
+            val combatSnapshot =
+                if (bridge.combatContextEnabled && shouldIncludeCombatContext(checkName, cloudCheckType)) {
+                    CombatContextService.snapshotFor(playerName, checkName)
+                } else {
+                    null
+                }
 
             if (bridge.detectionEnabled) {
                 queueAggregatedAlert(
                     aggregateKey = aggregateKey,
-                    windowMillis = bridge.detectionAggregateWindowMillis,
+                    windowMillis = resolveDetectionWindowMillis(bridge, cloudCheckType),
                     violationLevel = violationLevel,
                     template =
                         AlertTemplate(
@@ -86,17 +95,20 @@ object PolarApiHook {
                             description = "Suspicious behavior detected by Polar.",
                             color = COLOR_DETECTION,
                             fields =
-                                listOf(
-                                    DiscordField("Player", "`$playerName`"),
-                                    DiscordField("Check", "`$checkName`"),
-                                ),
+                                buildList {
+                                    add(DiscordField("Player", "`$playerName`"))
+                                    add(DiscordField("Check", "`$checkName`"))
+                                    cloudCheckType?.let { add(DiscordField("Cloud Type", "`${it.name}`")) }
+                                },
                             thumbnailUrl = avatarUrl,
                             authorName = "Polar Anticheat",
                             authorIconUrl = avatarUrl,
                             footerText = "PolarAddon • Detection",
                             includeViolationLevel = true,
+                            includeCombatContext = bridge.combatContextEnabled && shouldIncludeCombatContext(checkName, cloudCheckType),
                         ),
                     logMessage = "Detection alert: player=$playerName, check=$checkName",
+                    combatSnapshot = combatSnapshot,
                 )
             } else {
                 PolarAddonPlugin.instance.logger.info(
@@ -180,6 +192,7 @@ object PolarApiHook {
         template: AlertTemplate,
         logMessage: String,
         violationLevel: Double? = null,
+        combatSnapshot: CombatContextService.CombatContextSnapshot? = null,
     ) {
         val plugin = PolarAddonPlugin.instance
         val shouldSchedule =
@@ -191,6 +204,9 @@ object PolarApiHook {
                         existing.latestViolationLevel = violationLevel
                         existing.maxViolationLevel = max(existing.maxViolationLevel ?: violationLevel, violationLevel)
                     }
+                    if (combatSnapshot != null) {
+                        existing.combatSnapshot = combatSnapshot
+                    }
                     false
                 } else {
                     pendingAlerts[aggregateKey] =
@@ -199,6 +215,7 @@ object PolarApiHook {
                             logMessage = logMessage,
                             latestViolationLevel = violationLevel,
                             maxViolationLevel = violationLevel,
+                            combatSnapshot = combatSnapshot,
                         )
                     true
                 }
@@ -252,6 +269,26 @@ object PolarApiHook {
                         if (pending.count > 1) {
                             add(DiscordField("Occurrences", "`x${pending.count}`"))
                         }
+                        if (pending.template.includeCombatContext) {
+                            pending.combatSnapshot?.let { snapshot ->
+                                add(DiscordField("Target", "`${snapshot.targetName}`"))
+                                snapshot.distanceBlocks?.let { distance ->
+                                    add(DiscordField("Distance", "`${String.format("%.2f", distance)} blocks`"))
+                                }
+                                add(
+                                    DiscordField(
+                                        "CPS Window",
+                                        "`${String.format("%.2f", snapshot.cps)} (${snapshot.cpsWindowSeconds.toInt()}s)`",
+                                    ),
+                                )
+                                snapshot.pingMillis?.let { ping ->
+                                    add(DiscordField("Ping", "`$ping ms`"))
+                                }
+                                snapshot.tps?.let { tps ->
+                                    add(DiscordField("TPS", "`${String.format("%.2f", tps)}`"))
+                                }
+                            }
+                        }
                     },
                 thumbnailUrl = pending.template.thumbnailUrl,
                 authorName = pending.template.authorName,
@@ -272,6 +309,26 @@ object PolarApiHook {
     private fun playerSkinAvatarUrl(playerName: String): String {
         val encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8.name())
         return "https://mc-heads.net/avatar/$encoded/128"
+    }
+
+    private fun resolveDetectionWindowMillis(
+        bridge: DiscordBridge,
+        cloudCheckType: CloudCheckType?,
+    ): Long {
+        return cloudCheckType?.let { type ->
+            bridge.detectionWindowByCloudType[type] ?: bridge.detectionAggregateWindowMillis
+        } ?: bridge.detectionAggregateWindowMillis
+    }
+
+    private fun shouldIncludeCombatContext(
+        checkName: String,
+        cloudCheckType: CloudCheckType?,
+    ): Boolean {
+        if (cloudCheckType != null && COMBAT_CLOUD_TYPES.contains(cloudCheckType)) {
+            return true
+        }
+        val normalized = checkName.lowercase()
+        return normalized.contains("reach") || normalized.contains("killaura") || normalized.contains("kill aura")
     }
 
     private fun resolvePlayerAvatarUrl(
@@ -350,10 +407,12 @@ object PolarApiHook {
             }
         val detectionAggregateWindowMillis =
             config.getLong("discord.aggregate-window-detection-millis", 2500L)
+        val detectionWindowByCloudType = readDetectionWindowByCloudType(config)
         val mitigationAggregateWindowMillis =
             config.getLong("discord.aggregate-window-mitigation-millis", aggregateWindowMillis)
         val punishmentAggregateWindowMillis =
             config.getLong("discord.aggregate-window-punishment-millis", aggregateWindowMillis)
+        val combatContextEnabled = config.getBoolean("discord.combat-context.enabled", true)
         val premiumSkinLookupEnabled = config.getBoolean("discord.player-avatar.premium-skin-lookup-enabled", true)
         val premiumSkinLookupTimeoutMillis =
             config.getInt("discord.player-avatar.premium-skin-lookup-timeout-millis", 1200).coerceAtLeast(250)
@@ -377,12 +436,14 @@ object PolarApiHook {
                 mitigationEnabled = mitigationEnabled,
                 punishmentEnabled = punishmentEnabled,
                 detectionAggregateWindowMillis = detectionAggregateWindowMillis.coerceAtLeast(0L),
+                detectionWindowByCloudType = detectionWindowByCloudType,
                 mitigationAggregateWindowMillis = mitigationAggregateWindowMillis.coerceAtLeast(0L),
                 punishmentAggregateWindowMillis = punishmentAggregateWindowMillis.coerceAtLeast(0L),
                 fallbackPlayerAvatarUrl = fallbackPlayerAvatarUrl,
                 premiumSkinLookupEnabled = premiumSkinLookupEnabled,
                 premiumSkinLookupTimeoutMillis = premiumSkinLookupTimeoutMillis,
                 premiumSkinLookupCacheMillis = premiumSkinLookupCacheMinutes * 60_000L,
+                combatContextEnabled = combatContextEnabled,
             )
         }
 
@@ -393,13 +454,33 @@ object PolarApiHook {
             mitigationEnabled = mitigationEnabled,
             punishmentEnabled = punishmentEnabled,
             detectionAggregateWindowMillis = detectionAggregateWindowMillis.coerceAtLeast(0L),
+            detectionWindowByCloudType = detectionWindowByCloudType,
             mitigationAggregateWindowMillis = mitigationAggregateWindowMillis.coerceAtLeast(0L),
             punishmentAggregateWindowMillis = punishmentAggregateWindowMillis.coerceAtLeast(0L),
             fallbackPlayerAvatarUrl = fallbackPlayerAvatarUrl,
             premiumSkinLookupEnabled = premiumSkinLookupEnabled,
             premiumSkinLookupTimeoutMillis = premiumSkinLookupTimeoutMillis,
             premiumSkinLookupCacheMillis = premiumSkinLookupCacheMinutes * 60_000L,
+            combatContextEnabled = combatContextEnabled,
         )
+    }
+
+    private fun readDetectionWindowByCloudType(config: org.bukkit.configuration.file.FileConfiguration): Map<CloudCheckType, Long> {
+        val section = config.getConfigurationSection("discord.aggregate-window-detection-by-cloud-type") ?: return emptyMap()
+        val result = mutableMapOf<CloudCheckType, Long>()
+        section.getKeys(false).forEach { key ->
+            val cloudType = parseCloudCheckType(key) ?: return@forEach
+            result[cloudType] = section.getLong(key).coerceAtLeast(0L)
+        }
+        return result
+    }
+
+    private fun parseCloudCheckType(raw: String): CloudCheckType? {
+        return try {
+            CloudCheckType.valueOf(raw.uppercase())
+        } catch (_: IllegalArgumentException) {
+            null
+        }
     }
 
     private data class PendingAlert(
@@ -408,6 +489,7 @@ object PolarApiHook {
         var count: Int = 1,
         var latestViolationLevel: Double? = null,
         var maxViolationLevel: Double? = null,
+        var combatSnapshot: CombatContextService.CombatContextSnapshot? = null,
     )
 
     private data class AlertTemplate(
@@ -420,6 +502,7 @@ object PolarApiHook {
         val authorIconUrl: String?,
         val footerText: String,
         val includeViolationLevel: Boolean = false,
+        val includeCombatContext: Boolean = false,
     )
 
     private data class DiscordBridge(
@@ -428,12 +511,14 @@ object PolarApiHook {
         val mitigationEnabled: Boolean,
         val punishmentEnabled: Boolean,
         val detectionAggregateWindowMillis: Long,
+        val detectionWindowByCloudType: Map<CloudCheckType, Long>,
         val mitigationAggregateWindowMillis: Long,
         val punishmentAggregateWindowMillis: Long,
         val fallbackPlayerAvatarUrl: String,
         val premiumSkinLookupEnabled: Boolean,
         val premiumSkinLookupTimeoutMillis: Int,
         val premiumSkinLookupCacheMillis: Long,
+        val combatContextEnabled: Boolean,
     ) {
         companion object {
             fun disabled(): DiscordBridge {
@@ -443,12 +528,14 @@ object PolarApiHook {
                     mitigationEnabled = false,
                     punishmentEnabled = false,
                     detectionAggregateWindowMillis = 2500L,
+                    detectionWindowByCloudType = emptyMap(),
                     mitigationAggregateWindowMillis = 1250L,
                     punishmentAggregateWindowMillis = 1250L,
                     fallbackPlayerAvatarUrl = "https://mc-heads.net/avatar/Steve/128",
                     premiumSkinLookupEnabled = true,
                     premiumSkinLookupTimeoutMillis = 1200,
                     premiumSkinLookupCacheMillis = 3_600_000L,
+                    combatContextEnabled = true,
                 )
             }
         }
@@ -474,4 +561,11 @@ object PolarApiHook {
 
     private const val PREMIUM_LOOKUP_USER_AGENT =
         "Mozilla/5.0 (compatible; PolarAddonPremiumLookup/1.0; +https://github.com/Puk3p/polar-addon)"
+    private val COMBAT_CLOUD_TYPES =
+        setOf(
+            CloudCheckType.COMBAT_BEHAVIOR,
+            CloudCheckType.AUTO_CLICKER,
+            CloudCheckType.CPS_LIMIT,
+            CloudCheckType.RIGHT_CPS_LIMIT,
+        )
 }

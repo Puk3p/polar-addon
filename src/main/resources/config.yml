@@ -4,8 +4,16 @@ discord:
   avatar-url: ""
   aggregate-window-millis: 1250
   aggregate-window-detection-millis: 2500
+  aggregate-window-detection-by-cloud-type:
+    COMBAT_BEHAVIOR: 1200
+    AUTO_CLICKER: 1500
+    CPS_LIMIT: 1500
+    RIGHT_CPS_LIMIT: 1500
+    INVALID_PROTOCOL: 3500
   aggregate-window-mitigation-millis: 1250
   aggregate-window-punishment-millis: 1250
+  combat-context:
+    enabled: true
   player-avatar:
     premium-skin-lookup-enabled: true
     premium-skin-lookup-timeout-millis: 1200

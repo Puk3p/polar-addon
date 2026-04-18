@@ -7,6 +7,7 @@ import ro.puk3p.polaraddon.infrastructure.bukkit.adapter.BukkitPlayerKnocker
 import ro.puk3p.polaraddon.infrastructure.bukkit.adapter.BukkitPlayerLookup
 import ro.puk3p.polaraddon.infrastructure.bukkit.adapter.BukkitPlayerRotator
 import ro.puk3p.polaraddon.infrastructure.bukkit.command.PolarCommand
+import ro.puk3p.polaraddon.infrastructure.bukkit.listener.CombatContextListener
 
 class PluginBootstrap(private val plugin: JavaPlugin) {
     fun start() {
@@ -22,6 +23,7 @@ class PluginBootstrap(private val plugin: JavaPlugin) {
             it.setExecutor(polarCommand)
             it.tabCompleter = polarCommand
         }
+        plugin.server.pluginManager.registerEvents(CombatContextListener(), plugin)
 
         plugin.logger.info("Commands registered.")
     }

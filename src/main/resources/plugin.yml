@@ -8,6 +8,8 @@ description: Polar Anticheat addon plugin
 # PolarLoader must be loaded before this plugin so the API is available
 depend:
   - PolarLoader
+softdepend:
+  - CombatLogX
 
 commands:
   pa:
@@ -19,25 +21,25 @@ commands:
 
 permissions:
   polaraddon.use:
-    description: Access to /polar command root (required alongside sub-permissions)
+    description: Access to /pa command root (required alongside sub-permissions)
     default: op
 
   polaraddon.rotate:
-    description: Force a player's head rotation (/polar rotate)
+    description: Force a player's head rotation (/pa rotate)
     default: op
 
   polaraddon.knockback:
-    description: Apply a knockback impulse to a player (/polar knockback)
+    description: Apply a knockback impulse to a player (/pa knockback)
     default: op
 
   polaraddon.test:
-    description: Apply random rotation and knockback to a player (/polar test)
+    description: Apply random rotation and knockback to a player (/pa test)
     default: op
 
   polaraddon.summon:
-    description: Spawn a KillAura test mob near a player (/polar summon)
+    description: Spawn a KillAura test mob near a player (/pa summon)
     default: op
 
   polaraddon.reload:
-    description: Reload PolarAddon config and Discord bridge (/polar reload)
+    description: Reload PolarAddon config and Discord bridge (/pa reload)
     default: op

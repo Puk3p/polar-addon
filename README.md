@@ -24,6 +24,7 @@ PolarAddon is a Minecraft server plugin for Polar Anticheat setups. It adds staf
 - Polar API listeners log detection alerts, mitigations, and punishments.
 - Polar alerts can also be sent as Discord webhook embeds.
 - Detection alerts are grouped more patiently by player + check, with max violation level shown per burst.
+- Reach/KillAura detection bursts can include combat context (target, distance, CPS window, ping, TPS) when player is in combat.
 
 ## Discord Alerts
 
@@ -36,8 +37,16 @@ discord:
   avatar-url: ""
   aggregate-window-millis: 1250
   aggregate-window-detection-millis: 2500
+  aggregate-window-detection-by-cloud-type:
+    COMBAT_BEHAVIOR: 1200
+    AUTO_CLICKER: 1500
+    CPS_LIMIT: 1500
+    RIGHT_CPS_LIMIT: 1500
+    INVALID_PROTOCOL: 3500
   aggregate-window-mitigation-millis: 1250
   aggregate-window-punishment-millis: 1250
+  combat-context:
+    enabled: true
   player-avatar:
     premium-skin-lookup-enabled: true
     premium-skin-lookup-timeout-millis: 1200
@@ -52,12 +61,19 @@ discord:
 If `discord.webhook-url` is empty, Discord alerts are disabled.
 Use aggregate windows to control patience:
 - `discord.aggregate-window-detection-millis`
+- `discord.aggregate-window-detection-by-cloud-type` (optional overrides by Polar `CloudCheckType`)
 - `discord.aggregate-window-mitigation-millis`
 - `discord.aggregate-window-punishment-millis`
 
 Player avatar behavior:
 - If premium lookup is enabled and the username exists on Mojang, the embed uses that player's skin head.
 - If not premium (or lookup fails), it uses `discord.player-avatar.fallback-url`.
+
+Combat context behavior:
+- Works best with CombatLogX installed (`softdepend`), using API checks when available.
+- Without CombatLogX, it falls back to recent PvP activity tracking.
+- Included for combat-oriented detection spikes (Reach/KillAura patterns or cloud types like `COMBAT_BEHAVIOR`, `AUTO_CLICKER`, `CPS_LIMIT`, `RIGHT_CPS_LIMIT`).
+- Detection embeds also include `Cloud Type` when Polar provides it.
 
 ## Requirements
 
