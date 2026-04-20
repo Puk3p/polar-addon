@@ -20,26 +20,54 @@ commands:
     permission: polaraddon.use
 
 permissions:
+  polaraddon.*:
+    description: Full access to all PolarAddon commands.
+    default: op
+    children:
+      polaraddon.use: true
+      polaraddon.rotate: true
+      polaraddon.knockback: true
+      polaraddon.test: true
+      polaraddon.summon: true
+      polaraddon.reload: true
+
+  polaraddon.staff:
+    description: Staff command bundle for day-to-day moderation usage.
+    default: false
+    children:
+      polaraddon.use: true
+      polaraddon.rotate: true
+      polaraddon.knockback: true
+      polaraddon.test: true
+      polaraddon.summon: true
+
+  polaraddon.admin:
+    description: Admin command bundle including reload.
+    default: op
+    children:
+      polaraddon.staff: true
+      polaraddon.reload: true
+
   polaraddon.use:
     description: Access to /pa command root (required alongside sub-permissions)
-    default: op
+    default: false
 
   polaraddon.rotate:
     description: Force a player's head rotation (/pa rotate)
-    default: op
+    default: false
 
   polaraddon.knockback:
     description: Apply a knockback impulse to a player (/pa knockback)
-    default: op
+    default: false
 
   polaraddon.test:
     description: Apply random rotation and knockback to a player (/pa test)
-    default: op
+    default: false
 
   polaraddon.summon:
     description: Spawn a KillAura test mob near a player (/pa summon)
-    default: op
+    default: false
 
   polaraddon.reload:
     description: Reload PolarAddon config and Discord bridge (/pa reload)
-    default: op
+    default: false

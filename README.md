@@ -107,7 +107,14 @@ The shaded plugin jar is produced under `target/`.
 - `polaraddon.summon`
 - `polaraddon.reload`
 
-All permissions default to server operators.
+Permission bundles:
+- `polaraddon.staff` → `use`, `rotate`, `knockback`, `test`, `summon`
+- `polaraddon.admin` → `polaraddon.staff` + `reload`
+- `polaraddon.*` → full wildcard access
+
+Defaults:
+- Staff/action nodes default to `false` (assign explicitly to staff groups).
+- `polaraddon.admin` and `polaraddon.*` default to `op`, so OP has full command access by default.
 
 ## Releases
 
